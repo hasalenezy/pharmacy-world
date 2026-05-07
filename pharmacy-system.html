@@ -8,11 +8,20 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
-:root{--bg:#060e1a;--surface:#0d1b2e;--surface2:#112240;--border:#1a3050;--accent:#00d4aa;--accent2:#0099ff;--warn:#f59e0b;--danger:#ef4444;--text:#e2e8f0;--text-muted:#5a8fa8;--success:#10b981;}
+:root{
+  --bg:#f0f4f8;--surface:#ffffff;--surface2:#e8eef5;--border:#d1dce8;
+  --accent:#0077b6;--accent2:#0096c7;--warn:#f59e0b;--danger:#ef4444;
+  --text:#1a2332;--text-muted:#64748b;--success:#059669;
+}
+[data-theme="dark"]{
+  --bg:#060e1a;--surface:#0d1b2e;--surface2:#112240;--border:#1a3050;
+  --accent:#00d4aa;--accent2:#0099ff;--warn:#f59e0b;--danger:#ef4444;
+  --text:#e2e8f0;--text-muted:#5a8fa8;--success:#10b981;
+}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at 30% 30%,#00d4aa0a,transparent 60%),radial-gradient(ellipse at 70% 70%,#0099ff08,transparent 60%);}
-.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;width:90%;max-width:420px;}
+.auth-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#e8f4fd 0%,#f0f8ff 50%,#e8f0fe 100%);}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;width:90%;max-width:420px;box-shadow:0 20px 60px rgba(0,119,182,0.12);}
 .auth-logo{text-align:center;margin-bottom:28px;}
 .auth-logo .icon{font-size:52px;display:block;margin-bottom:10px;}
 .auth-logo h1{font-size:24px;font-weight:900;}
@@ -25,7 +34,7 @@ body{font-family:'Cairo',sans-serif;background:var(--bg);color:var(--text);min-h
 .auth-btn{width:100%;background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;border-radius:12px;padding:13px;color:#000;font-family:'Cairo',sans-serif;font-weight:900;font-size:15px;cursor:pointer;margin-top:8px;}
 .auth-err{background:#ef444420;border:1px solid #ef444440;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--danger);margin-top:12px;display:none;}
 .app{display:none;}
-header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .header-left{display:flex;align-items:center;gap:12px;}
 .logo-icon{width:40px;height:40px;background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;}
 .header-title{font-size:17px;font-weight:900;}
@@ -62,7 +71,7 @@ header{background:var(--surface);border-bottom:1px solid var(--border);padding:1
 .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center;}
 .stat-card .num{font-size:26px;font-weight:900;}
 .stat-card .lbl{font-size:10px;color:var(--text-muted);margin-top:2px;}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
 .card-title{font-size:14px;font-weight:700;margin-bottom:16px;color:var(--accent);display:flex;align-items:center;gap:8px;}
 .form-row{display:grid;gap:10px;margin-bottom:12px;}
 .form-3{grid-template-columns:2fr 1fr 1fr;}
@@ -169,7 +178,12 @@ td{padding:11px 14px;font-size:13px;}
 <div id="app" class="app">
   <header>
     <div class="header-left">
-      <div class="logo-icon">💊</div>
+      <div class="logo-icon" style="background:linear-gradient(135deg,var(--accent),var(--accent2));border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,119,182,0.3)">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+          <path d="M13 2C7 2 2 7 2 13s5 11 11 11 11-5 11-11S19 2 13 2z" fill="white" fill-opacity="0.2"/>
+          <path d="M10 8h6v3h-6zM10 8v10M16 8v10M8 13h10" stroke="white" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
       <div><div class="header-title">عهدة <span>الأدوية</span></div><div class="header-sub" id="header-sub">...</div></div>
     </div>
     <div class="header-right">
@@ -181,6 +195,7 @@ td{padding:11px 14px;font-size:13px;}
         </div>
       </div>
       <span class="role-badge" id="role-badge"></span>
+      <button id="theme-toggle" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px;" title="تبديل النمط">🌙</button>
       <button class="btn-logout" onclick="logout()">خروج</button>
     </div>
   </header>
@@ -238,7 +253,17 @@ td{padding:11px 14px;font-size:13px;}
         <button class="filter-btn" onclick="setInvFilter('expired',this)">منتهية</button>
         <button class="filter-btn" onclick="setInvFilter('narcotic',this)">مخدرة 🔴</button>
         <button class="filter-btn" onclick="setInvFilter('psycho',this)">نفسية 🟣</button>
-        <button class="export-btn" onclick="exportInv()">📥 Excel</button>
+        <button class="export-btn" onclick="exportInv()">📥 تصدير Excel</button>
+        <label class="export-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#0099ff40;color:var(--accent2)">
+          📤 استيراد Excel
+          <input type="file" accept=".xlsx,.xls,.csv" id="excel-import" style="display:none" onchange="importExcel(event)">
+        </label>
+        <button class="export-btn" onclick="backupData()" style="border-color:#7c3aed40;color:#a78bfa">💾 نسخ احتياطي</button>
+        <label class="export-btn" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;border-color:#f59e0b40;color:var(--warn)">
+          📂 استعادة
+          <input type="file" accept=".json" id="restore-file" style="display:none" onchange="restoreData(event)">
+        </label>
+        <button class="export-btn" onclick="exportTemplate()" style="border-color:#00d4aa40;color:var(--accent)">📋 نموذج Excel</button>
       </div>
       <div class="table-wrap">
         <table><thead><tr><th>#</th><th>اسم الدواء</th><th>الكمية</th><th>تاريخ الانتهاء</th><th>الحالة</th><th id="inv-action-col"></th></tr></thead><tbody id="inv-list"></tbody></table>
@@ -822,6 +847,117 @@ async function renderInvCustodian() {
   }).join('');
 }
 
+
+// ── BACKUP & RESTORE ──
+window.backupData = async function() {
+  await loadDrugs();
+  await loadDispenses();
+  if(!drugs.length && !dispenses.length) { msg('⚠️ لا توجد بيانات'); return; }
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    exportedBy: CUD.name,
+    drugs: drugs.map(d=>({...d})),
+    dispenses: dispenses.map(d=>({...d, createdAt: d.createdAt?.seconds ? new Date(d.createdAt.seconds*1000).toISOString() : null}))
+  };
+  const json = JSON.stringify(backup, null, 2);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  const a = document.createElement('a');
+  a.href = 'data:application/json;base64,' + b64;
+  a.download = 'نسخة_احتياطية_' + new Date().toLocaleDateString('ar-SA').replace(/\//g,'-') + '.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  msg('✅ تم حفظ النسخة الاحتياطية');
+};
+
+window.restoreData = async function(e) {
+  if(CUD.role !== 'admin') { msg('⛔ فقط الأدمن يستطيع الاستعادة'); return; }
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const backup = JSON.parse(ev.target.result);
+      if(!backup.drugs) { msg('❌ ملف غير صحيح'); return; }
+      let added = 0;
+      for(const d of backup.drugs) {
+        const {id, ...data} = d;
+        await addDoc(collection(db,'drugs'), {...data, restoredAt: serverTimestamp()});
+        added++;
+      }
+      msg(`✅ تم استعادة ${added} دواء`);
+      renderInv();
+    } catch(err) { msg('❌ خطأ في قراءة الملف'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+// ── IMPORT EXCEL ──
+window.importExcel = async function(e) {
+  if(CUD.role !== 'admin' && CUD.role !== 'custodian') { msg('⛔ ليس لديك صلاحية الاستيراد'); return; }
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const wb = XLSX.read(ev.target.result, {type:'binary', cellDates:true});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      if(!rows.length) { msg('⚠️ الملف فارغ'); return; }
+      let added = 0, skipped = 0;
+      for(const row of rows) {
+        const keys = Object.keys(row);
+        const nameKey = keys.find(k=>/اسم|name|دواء|drug/i.test(k));
+        const qtyKey  = keys.find(k=>/كمية|qty|quantity|عدد/i.test(k));
+        const expKey  = keys.find(k=>/انتهاء|تاريخ|exp|date/i.test(k));
+        const typeKey = keys.find(k=>/نوع|type|شكل/i.test(k));
+        const catKey  = keys.find(k=>/تصنيف|category|cat/i.test(k));
+        const noteKey = keys.find(k=>/ملاحظ|note/i.test(k));
+        const nameAr = nameKey ? String(row[nameKey]).trim() : '';
+        if(!nameAr) { skipped++; continue; }
+        let exp = '';
+        if(expKey && row[expKey]) {
+          const raw = row[expKey];
+          if(raw instanceof Date) exp = raw.toISOString().split('T')[0];
+          else { const d = new Date(raw); if(!isNaN(d)) exp = d.toISOString().split('T')[0]; else exp = String(raw); }
+        }
+        const catVal = catKey ? String(row[catKey]).trim() : '';
+        const category = catVal.includes('مخدر')||catVal.toLowerCase().includes('narc') ? 'narcotic' : catVal.includes('نفسي')||catVal.toLowerCase().includes('psych') ? 'psycho' : 'regular';
+        await addDoc(collection(db,'drugs'), {
+          nameAr, name: nameAr,
+          type: typeKey ? String(row[typeKey]).trim() : 'أخرى',
+          qty: qtyKey ? (+row[qtyKey]||0) : 0,
+          exp, category,
+          note: noteKey ? String(row[noteKey]).trim() : '',
+          addedBy: CUD.name, createdAt: serverTimestamp()
+        });
+        added++;
+      }
+      msg(`✅ تم استيراد ${added} دواء${skipped?' (تخطي '+skipped+')':''}`);
+      renderInv();
+    } catch(err) { msg('❌ تعذر قراءة الملف'); }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = '';
+};
+
+// ── EXPORT TEMPLATE ──
+window.exportTemplate = function() {
+  const rows = [['اسم الدواء','النوع','الكمية','تاريخ الانتهاء','التصنيف','ملاحظات'],
+    ['أموكسيسيلين 500mg','كبسول',100,'2026-12-01','عادي','مثال'],
+    ['مورفين 10mg/ml','حقن',50,'2026-06-15','مخدر',''],
+    ['ديازيبام 5mg','أقراص',200,'2026-09-01','نفسي',''],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:25},{wch:12},{wch:10},{wch:16},{wch:10},{wch:25}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'نموذج');
+  const wbout = XLSX.write(wb, {bookType:'xlsx', type:'base64'});
+  const a = document.createElement('a');
+  a.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+  a.download = 'نموذج_استيراد_ادوية.xlsx';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  msg('✅ تم تحميل النموذج');
+};
+
 // ── DISPENSE ──
 let dispenses = [];
 let monthlyData = [];
@@ -1041,6 +1177,27 @@ async function handleBarcode(code) {
   }
 }
 
+
+// ── THEME ──
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(isDark) {
+    document.documentElement.removeAttribute('data-theme');
+    document.getElementById('theme-toggle').textContent = '🌙';
+    localStorage.setItem('theme', 'light');
+  } else {
+    document.documentElement.setAttribute('data-theme', 'dark');
+    document.getElementById('theme-toggle').textContent = '☀️';
+    localStorage.setItem('theme', 'dark');
+  }
+}
+// Apply saved theme on load
+(function(){
+  const saved = localStorage.getItem('theme');
+  if(saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
 
 window.closeModal=function(id){document.getElementById(id).classList.remove('show');};
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);}));
