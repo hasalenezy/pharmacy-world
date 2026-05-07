@@ -348,10 +348,23 @@ td{padding:11px 14px;font-size:13px;}
       <div id="monthly-wrap"><div class="empty-state"><div class="icon">📅</div><p>اختر الشهر وانقر "عرض التقرير"</p></div></div>
     </div>
 
+    <!-- HOSPITAL SUPPORT TAB -->
+    <div class="tab-content" id="tab-hospital">
+      <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="openHospModal()" id="btn-send-hosp">🏥 طلب دعم من مستشفى</button>
+        <button class="filter-btn active" onclick="setHFilter('all',this)">الكل</button>
+        <button class="filter-btn" onclick="setHFilter('sent',this)">📤 أرسلتها</button>
+        <button class="filter-btn" onclick="setHFilter('received',this)">📥 مستقبَلة</button>
+        <button class="filter-btn" onclick="setHFilter('pending',this)">⏳ معلقة</button>
+      </div>
+      <div id="hosp-requests-list"><div class="empty-state"><div class="icon">🏥</div><p>لا توجد طلبات بين المستشفيات</p></div></div>
+    </div>
+
     <div class="tab-content" id="tab-users">
       <div class="card">
         <div class="card-title">👥 إدارة المستخدمين</div>
         <button class="btn-primary" onclick="openAddUser()" style="margin-bottom:16px">➕ إضافة مستخدم</button>
+        <button class="btn-primary" onclick="openHospManage()" style="margin-bottom:16px;background:linear-gradient(135deg,#059669,#0077b6)">🏥 إدارة المستشفيات</button>
         <div id="users-list"></div>
       </div>
     </div>
@@ -403,6 +416,59 @@ td{padding:11px 14px;font-size:13px;}
     <div class="auth-err" id="user-err"></div>
   </div>
 </div>
+<!-- Hospital Support Modal -->
+<div class="modal-bg" id="hosp-modal">
+  <div class="modal" style="max-width:560px">
+    <h3>🏥 طلب دعم من مستشفى</h3>
+    <div class="field" style="margin-bottom:12px">
+      <label>المستشفى</label>
+      <select id="hm-hosp" class="mfs">
+        <option value="">— اختر المستشفى —</option>
+      </select>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>اسم الدواء المطلوب</label>
+      <input type="text" id="hm-drug" class="mfs" placeholder="اسم الدواء">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="field">
+        <label>الكمية</label>
+        <input type="number" id="hm-qty" class="mfs" min="1" placeholder="0">
+      </div>
+      <div class="field">
+        <label>نوع الطلب</label>
+        <select id="hm-priority" class="mfs">
+          <option value="normal">عادي</option>
+          <option value="urgent">🚨 طارئ</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label>ملاحظات</label>
+      <textarea id="hm-note" class="mfs" placeholder="تفاصيل إضافية..." style="min-height:70px;resize:vertical"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-primary" onclick="submitHospRequest()">إرسال الطلب 📤</button>
+      <button class="btn-secondary" onclick="closeModal('hosp-modal')">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hospital Manage Modal (Admin) -->
+<div class="modal-bg" id="hosp-manage-modal">
+  <div class="modal" style="max-width:600px">
+    <h3>🏥 إدارة المستشفيات الطرفية</h3>
+    <div id="hospitals-list" style="margin-bottom:16px"></div>
+    <div class="field" style="margin-bottom:10px"><label>إضافة مستشفى جديد</label><input type="text" id="new-hosp-name" class="mfs" placeholder="اسم المستشفى"></div>
+    <button class="btn-primary" style="margin-bottom:16px" onclick="addHospital()">➕ إضافة</button>
+    <hr style="border-color:var(--border);margin-bottom:16px">
+    <div style="font-size:13px;color:var(--accent);font-weight:700;margin-bottom:10px">تفعيل المستشفيات لمستخدم:</div>
+    <div class="field" style="margin-bottom:10px"><label>اختر المستخدم</label><select id="hosp-user-sel" class="mfs" onchange="loadUserHospitals()"><option value="">— اختر —</option></select></div>
+    <div id="user-hosp-perms"></div>
+    <div class="modal-btns"><button class="btn-primary" onclick="saveUserHospitals()">حفظ</button><button class="btn-secondary" onclick="closeModal('hosp-manage-modal')">إلغاء</button></div>
+  </div>
+</div>
+
 <!-- Edit Perm Modal -->
 <div class="modal-bg" id="ep-modal">
   <div class="modal"><h3>🔑 تعديل الصلاحيات</h3>
@@ -527,6 +593,11 @@ function initApp(){
   // Setup browser notifications for ALL roles
   setupBrowserNotifications();
   setupNotifListener();
+  // Date & Weather
+  updateDateTime();
+  setInterval(updateDateTime, 60000);
+  loadWeather();
+  setInterval(loadWeather, 300000); // refresh every 5 mins
 
   if(CUD.role==='warehouse'){
     document.getElementById('reminder-bar').classList.add('show');
@@ -544,17 +615,20 @@ function buildTabs(){
       {id:'all-requests',label:'📋 كل الطلبات',fn:loadAllReqs},
       {id:'reports',label:'📊 التقارير',fn:()=>setTimeout(renderCharts,50)},
       {id:'monthly',label:'📅 الشهري',fn:()=>{const n=new Date();if(!document.getElementById('rpt-month').value)document.getElementById('rpt-month').value=n.toISOString().slice(0,7);}},
+      {id:'hospital',label:'🏥 دعم المستشفيات',fn:()=>loadHospRequests('all')},
       {id:'users',label:'👥 المستخدمون',fn:loadUsers}
     ];
   } else if(role==='pharmacy') {
-    // مشرف صيدلية: طلب أدوية فقط
+    // مشرف صيدلية: طلب أدوية + دعم مستشفيات إذا مفعّل
     tl=[{id:'requests',label:'📝 طلب دواء',fn:loadMyReqs}];
+    if(CUD.canRequestHospital) tl.push({id:'hospital',label:'🏥 دعم المستشفيات',fn:()=>loadHospRequests('all')});
   } else if(role==='warehouse') {
     // موظف مستودع: عرض المخزون + قبول الطلبات مع نوت
     tl=[
       {id:'warehouse',label:'📦 الطلبات الواردة',fn:()=>loadWReqs(wF)},
       {id:'inventory',label:'💊 عرض المخزون',fn:()=>renderInvReadOnly()},
     ];
+    if(CUD.canRequestHospital) tl.push({id:'hospital',label:'🏥 دعم المستشفيات',fn:()=>loadHospRequests('all')});
   } else if(role==='custodian') {
     // أمين عهدة: إضافة أدوية وكميات فقط
     tl=[{id:'inventory',label:'💊 إضافة أدوية',fn:()=>renderInvCustodian()}];
@@ -717,6 +791,8 @@ function setupNotifListener() {
       if(change.type === 'added') {
         const data = change.doc.data();
         showBrowserNotif('نظام عهدة الأدوية 💊', data.message);
+        const isUrgent = data.message && data.message.includes('🚨');
+        playNotifSound(isUrgent);
       }
     });
   });
@@ -791,7 +867,7 @@ async function loadUsers(){
   const rl={admin:'👑 أدمن',pharmacy:'🏥 مشرف صيدلية',warehouse:'🏭 موظف مستودع',custodian:'🔑 أمين عهدة'};
   document.getElementById('users-list').innerHTML=s.docs.map(d=>{
     const u=d.data();const isSelf=u.uid===CU.uid;
-    return `<div class="user-card"><div class="user-info"><div class="uname">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div><div class="uemail">${u.email} ${u.dept?'• '+u.dept:''}</div></div><div class="user-actions"><span class="badge badge-approved">${rl[u.role]||u.role}</span>${u.role==='custodian'&&!isSelf?`<button class="btn-sm" onclick="openEP('${u.uid}','${u.name}',${JSON.stringify(JSON.stringify(u.permissions||{}))})">🔑 صلاحيات</button>`:''}${!isSelf?`<button class="btn-danger" onclick="delUser('${u.uid}','${u.name}')">حذف</button>`:''}</div></div>`;
+    return `<div class="user-card"><div class="user-info"><div class="uname">${u.name} ${isSelf?'<span style="font-size:10px;color:var(--accent)">(أنت)</span>':''}</div><div class="uemail">${u.email} ${u.dept?'• '+u.dept:''}</div></div><div class="user-actions"><span class="badge badge-approved">${rl[u.role]||u.role}</span>${u.role==='custodian'&&!isSelf?`<button class="btn-sm" onclick="openEP('${u.uid}','${u.name}')">🔑 صلاحيات</button>`:''}${!isSelf?`<button class="btn-danger" onclick="delUser('${u.uid}','${u.name}')">حذف</button>`:''}</div></div>`;
   }).join('');
 }
 window.openAddUser=function(){document.getElementById('user-modal').classList.add('show');document.getElementById('user-err').style.display='none';['um-name','um-email','um-pass','um-dept'].forEach(id=>document.getElementById(id).value='');document.getElementById('um-role').value='pharmacy';document.getElementById('perm-section').style.display='none';};
@@ -851,7 +927,7 @@ async function renderInvReadOnly() {
   em.style.display='none';
   tb.innerHTML = list.map((d,i)=>{
     const days = daysLeft(d.exp||''); const st = getSt(days);
-    const expF = d.exp ? new Date(d.exp).toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'}) : '—';
+    const expF = d.exp ? new Date(d.exp).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     const cb = d.category==='narcotic'?'<span class="cat-narc">🔴 مخدر</span>':d.category==='psycho'?'<span class="cat-psych">🟣 نفسي</span>':'';
     return `<tr>
       <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
@@ -879,7 +955,7 @@ async function renderInvCustodian() {
   em.style.display='none';
   tb.innerHTML = list.map((d,i)=>{
     const days = daysLeft(d.exp||''); const st = getSt(days);
-    const expF = d.exp ? new Date(d.exp).toLocaleDateString('ar-SA',{year:'numeric',month:'long',day:'numeric'}) : '—';
+    const expF = d.exp ? new Date(d.exp).toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit',year:'numeric'}) : '—';
     const cb = d.category==='narcotic'?'<span class="cat-narc">🔴 مخدر</span>':d.category==='psycho'?'<span class="cat-psych">🟣 نفسي</span>':'';
     return `<tr>
       <td style="color:var(--text-muted);font-size:11px">${i+1}</td>
@@ -1250,6 +1326,350 @@ window.toggleTheme = function() {
     if(btn) btn.textContent = '☀️';
   }
 })();
+
+
+// ═══ WEATHER & DATE ═══
+function updateDateTime() {
+  const now = new Date();
+  // Hijri
+  try {
+    const hijri = now.toLocaleDateString('ar-SA-u-ca-islamic', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+    document.getElementById('date-hijri').textContent = hijri;
+  } catch(e) {}
+  // Miladi
+  const miladi = now.toLocaleDateString('ar-SA', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('date-miladi').textContent = miladi;
+}
+
+async function loadWeather() {
+  try {
+    if(!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const {latitude:lat, longitude:lon} = pos.coords;
+      // Use open-meteo (free, no API key)
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weathercode,windspeed_10m&timezone=auto`);
+      const d = await r.json();
+      const temp = Math.round(d.current.temperature_2m);
+      const code = d.current.weathercode;
+      const icons = {0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',96:'⛈️',99:'⛈️'};
+      const descs = {0:'صحو',1:'قليل الغيوم',2:'غائم جزئياً',3:'غائم',45:'ضباب',51:'رذاذ خفيف',61:'مطر خفيف',63:'مطر متوسط',65:'مطر غزير',80:'زخات مطر',95:'عاصفة رعدية'};
+      const icon = icons[code] || '🌤️';
+      const desc = descs[code] || '';
+      document.getElementById('weather-icon').textContent = icon;
+      document.getElementById('weather-temp').textContent = temp + '°';
+      document.getElementById('weather-desc').textContent = desc;
+      // Get city name
+      try {
+        const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ar`);
+        const gd = await geo.json();
+        const city = gd.address?.city || gd.address?.town || gd.address?.state || '';
+        document.getElementById('weather-city').textContent = city;
+      } catch(e) {}
+    }, ()=>{}, {timeout:5000});
+  } catch(e) { console.warn('Weather unavailable'); }
+}
+
+// ═══ HOSPITALS LIST (التجمع الصحي الثاني - الرياض) ═══
+const DEFAULT_HOSPITALS = [
+  'مستشفى الملك سلمان بالرياض',
+  'مستشفى عليشة',
+  'مستشفى الأمير سلطان للقوات المسلحة',
+  'مستشفى الحرس الوطني - الحرس الوطني',
+  'مستشفى المملكة التخصصي',
+  'مستشفى اليمامة',
+  'مستشفى الشميسي العام',
+  'مستشفى الرس',
+  'مستشفى عنيزة العام',
+  'مستشفى المذنب',
+  'مستشفى البكيرية',
+  'مستشفى رياض الخبراء',
+  'مستشفى البدائع',
+  'مستشفى عيون الجواء',
+  'مستشفى الأسياح',
+  'مستشفى ضرية',
+  'مستشفى الشماسية',
+  'مستشفى الخبراء',
+  'مستشفى المقدمة بالرياض',
+  'مستشفى قوى الأمن بالرياض',
+  'المستشفى السعودي الألماني',
+  'مستشفى النخيل',
+  'مستشفى القصيم الوطني',
+  'مستشفى بريدة المركزي',
+];
+
+let hFilter = 'all';
+let allHospitals = [...DEFAULT_HOSPITALS];
+
+async function loadHospitalsList() {
+  try {
+    const snap = await getDocs(collection(db,'hospitals'));
+    if(!snap.empty) {
+      allHospitals = snap.docs.map(d=>d.data().name).filter(Boolean);
+    } else {
+      // Save defaults to Firebase
+      for(const h of DEFAULT_HOSPITALS) {
+        await addDoc(collection(db,'hospitals'), {name:h, createdAt:serverTimestamp()});
+      }
+    }
+  } catch(e) { allHospitals = [...DEFAULT_HOSPITALS]; }
+}
+
+window.openHospModal = async function() {
+  await loadHospitalsList();
+  const userHosps = CUD.allowedHospitals || allHospitals;
+  const sel = document.getElementById('hm-hosp');
+  sel.innerHTML = '<option value="">— اختر المستشفى —</option>' +
+    userHosps.map(h=>`<option value="${h}">${h}</option>`).join('');
+  document.getElementById('hm-drug').value='';
+  document.getElementById('hm-qty').value='';
+  document.getElementById('hm-note').value='';
+  document.getElementById('hm-priority').value='normal';
+  document.getElementById('hosp-modal').classList.add('show');
+};
+
+window.submitHospRequest = async function() {
+  const hosp = document.getElementById('hm-hosp').value;
+  const drug = document.getElementById('hm-drug').value.trim();
+  const qty = +document.getElementById('hm-qty').value;
+  const priority = document.getElementById('hm-priority').value;
+  const note = document.getElementById('hm-note').value.trim();
+  if(!hosp) { msg('⚠️ اختر المستشفى'); return; }
+  if(!drug) { msg('⚠️ أدخل اسم الدواء'); return; }
+  if(!qty||qty<=0) { msg('⚠️ أدخل الكمية'); return; }
+  await addDoc(collection(db,'hospRequests'), {
+    fromHospital: CUD.dept || CUD.name,
+    fromUid: CU.uid,
+    fromName: CUD.name,
+    toHospital: hosp,
+    drug, qty, priority, note,
+    status: 'pending',
+    createdAt: serverTimestamp()
+  });
+  // Notify admins
+  const admins = await getDocs(query(collection(db,'users'), where('role','==','admin')));
+  const urgentLabel = priority === 'urgent' ? '🚨 طارئ: ' : '';
+  for(const u of admins.docs) await notif(u.data().uid, `${urgentLabel}طلب دعم من ${CUD.dept||CUD.name} إلى ${hosp}: ${drug} (${qty})`);
+  // Play sound
+  playNotifSound(priority === 'urgent');
+  msg('✅ تم إرسال الطلب');
+  closeModal('hosp-modal');
+  loadHospRequests(hFilter);
+};
+
+async function loadHospRequests(filter='all') {
+  hFilter = filter;
+  const dept = CUD.dept || CUD.name;
+  let snap;
+  if(CUD.role === 'admin') {
+    snap = await getDocs(query(collection(db,'hospRequests'), orderBy('createdAt','desc')));
+  } else {
+    snap = await getDocs(query(collection(db,'hospRequests'), orderBy('createdAt','desc')));
+  }
+  let reqs = snap.docs.map(d=>({id:d.id,...d.data()}));
+  // Filter by sent/received/all
+  if(filter === 'sent') reqs = reqs.filter(r=>r.fromUid===CU.uid||r.fromHospital===dept);
+  else if(filter === 'received') reqs = reqs.filter(r=>r.toHospital===dept);
+  else if(filter === 'pending') reqs = reqs.filter(r=>r.status==='pending');
+  const wrap = document.getElementById('hosp-requests-list');
+  if(!reqs.length) { wrap.innerHTML='<div class="empty-state"><div class="icon">🏥</div><p>لا توجد طلبات</p></div>'; return; }
+  wrap.innerHTML = reqs.map(r => {
+    const dt = r.createdAt ? new Date(r.createdAt.seconds*1000).toLocaleString('ar-SA') : '';
+    const isUrgent = r.priority === 'urgent';
+    const urgentBadge = isUrgent ? '<span style="background:#ef444420;color:#ef4444;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px">🚨 طارئ</span>' : '';
+    const statusColors = {pending:'var(--warn)',approved:'var(--success)',rejected:'var(--danger)',delivered:'var(--accent2)'};
+    const statusLabels = {pending:'⏳ معلق',approved:'✅ موافق',rejected:'❌ مرفوض',delivered:'📦 تم التسليم'};
+    const canAction = CUD.role === 'admin' || r.toHospital === dept;
+    const actions = canAction && r.status === 'pending' ? `
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn-success" onclick="updateHospReq('${r.id}','approved')">✅ موافقة</button>
+        <button class="btn-danger" onclick="updateHospReq('${r.id}','rejected')">❌ رفض</button>
+      </div>` : canAction && r.status === 'approved' ? `
+      <div style="margin-top:10px"><button class="btn-warn" onclick="updateHospReq('${r.id}','delivered')">📦 تم التسليم</button></div>` : '';
+    return `<div class="request-card" style="${isUrgent?'border-color:#ef444460;background:#ef444408;':r.status==='approved'?'border-color:#10b98140;':r.status==='delivered'?'border-color:#0099ff40;':''}">
+      <div class="request-header">
+        <div>
+          <div class="request-drug">${urgentBadge}${r.drug}</div>
+          <div class="request-meta">📤 من: ${r.fromHospital} → 📥 إلى: ${r.toHospital}</div>
+          <div class="request-meta">الكمية: ${r.qty} | ${dt}</div>
+          ${r.note?`<div class="request-meta" style="margin-top:4px">📝 ${r.note}</div>`:''}
+        </div>
+        <span class="badge" style="background:${statusColors[r.status]}20;color:${statusColors[r.status]}">${statusLabels[r.status]||r.status}</span>
+      </div>
+      ${actions}
+    </div>`;
+  }).join('');
+}
+
+window.updateHospReq = async function(id, status) {
+  await updateDoc(doc(db,'hospRequests',id), {status, updatedAt:serverTimestamp()});
+  const rd = await getDoc(doc(db,'hospRequests',id));
+  const r = rd.data();
+  const msgs = {approved:`✅ تمت الموافقة على طلب: ${r.drug} من ${r.fromHospital}`, rejected:`❌ تم رفض طلب: ${r.drug}`, delivered:`📦 تم تسليم: ${r.drug}`};
+  await notif(r.fromUid, msgs[status]);
+  msg('✅ تم التحديث');
+  loadHospRequests(hFilter);
+};
+
+window.setHFilter = function(f,b) {
+  document.querySelectorAll('#tab-hospital .filter-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  loadHospRequests(f);
+};
+
+// ═══ HOSPITAL MANAGE (ADMIN) ═══
+window.openHospManage = async function() {
+  await loadHospitalsList();
+  // Show hospitals list
+  const list = document.getElementById('hospitals-list');
+  list.innerHTML = allHospitals.map((h,i)=>`
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:8px;margin-bottom:6px">
+      <span style="font-size:13px">${h}</span>
+      <button class="btn-danger" style="font-size:10px;padding:3px 8px" onclick="removeHospital('${h}')">حذف</button>
+    </div>`).join('');
+  // Load users for permission assignment
+  const users = await getDocs(collection(db,'users'));
+  const sel = document.getElementById('hosp-user-sel');
+  sel.innerHTML = '<option value="">— اختر مستخدم —</option>' +
+    users.docs.filter(d=>d.data().uid!==CU.uid).map(d=>`<option value="${d.data().uid}">${d.data().name} (${d.data().dept||d.data().role})</option>`).join('');
+  document.getElementById('hosp-manage-modal').classList.add('show');
+};
+
+window.addHospital = async function() {
+  const name = document.getElementById('new-hosp-name').value.trim();
+  if(!name) { msg('⚠️ أدخل اسم المستشفى'); return; }
+  await addDoc(collection(db,'hospitals'), {name, createdAt:serverTimestamp()});
+  allHospitals.push(name);
+  document.getElementById('new-hosp-name').value='';
+  msg('✅ تم إضافة المستشفى');
+  openHospManage();
+};
+
+window.removeHospital = async function(name) {
+  const snap = await getDocs(query(collection(db,'hospitals'), where('name','==',name)));
+  for(const d of snap.docs) await deleteDoc(d.ref);
+  allHospitals = allHospitals.filter(h=>h!==name);
+  msg('🗑️ تم حذف المستشفى');
+  openHospManage();
+};
+
+window.loadUserHospitals = async function() {
+  const uid = document.getElementById('hosp-user-sel').value;
+  if(!uid) return;
+  const snap = await getDocs(query(collection(db,'users'), where('uid','==',uid)));
+  if(snap.empty) return;
+  const userData = snap.docs[0].data();
+  const allowed = userData.allowedHospitals || [];
+  const wrap = document.getElementById('user-hosp-perms');
+  wrap.innerHTML = `
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">اختر المستشفيات المسموح له بالطلب منها:</div>
+    <div style="margin-bottom:8px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:700;color:var(--accent)">
+        <input type="checkbox" id="hosp-all" onchange="toggleAllHosps(this)" ${allowed.length===0||allowed.length===allHospitals.length?'checked':''}> تفعيل كل المستشفيات
+      </label>
+    </div>
+    <div id="hosp-checkboxes" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:200px;overflow-y:auto">
+      ${allHospitals.map(h=>`
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;padding:6px;background:var(--surface2);border-radius:8px">
+          <input type="checkbox" class="hosp-cb" value="${h}" ${allowed.length===0||allowed.includes(h)?'checked':''}> ${h}
+        </label>`).join('')}
+    </div>
+    <div style="margin-top:10px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
+        <input type="checkbox" id="can-hosp-req" ${userData.canRequestHospital?'checked':''}> تفعيل خاصية طلب الدعم للمستخدم
+      </label>
+    </div>`;
+};
+
+window.toggleAllHosps = function(cb) {
+  document.querySelectorAll('.hosp-cb').forEach(el=>el.checked=cb.checked);
+};
+
+window.saveUserHospitals = async function() {
+  const uid = document.getElementById('hosp-user-sel').value;
+  if(!uid) { msg('⚠️ اختر مستخدماً'); return; }
+  const checkAll = document.getElementById('hosp-all').checked;
+  const canReq = document.getElementById('can-hosp-req').checked;
+  const selected = checkAll ? [] : Array.from(document.querySelectorAll('.hosp-cb:checked')).map(el=>el.value);
+  await updateDoc(doc(db,'users',uid), {allowedHospitals: selected, canRequestHospital: canReq});
+  msg('✅ تم حفظ صلاحيات المستشفيات');
+  closeModal('hosp-manage-modal');
+};
+
+// ═══ SOUND NOTIFICATIONS ═══
+function playNotifSound(isUrgent=false) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if(isUrgent) {
+      // Urgent: fast repeated beeps
+      [0, 0.15, 0.3, 0.45, 0.6].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        osc.type = 'square';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.1);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.1);
+      });
+    } else {
+      // Normal: soft double beep
+      [0, 0.25].forEach(t => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 520;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(0.2, ctx.currentTime + t);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+        osc.start(ctx.currentTime + t);
+        osc.stop(ctx.currentTime + t + 0.2);
+      });
+    }
+  } catch(e) {}
+}
+
+// ═══ FIX RESTORE ═══
+window.restoreData = async function(e) {
+  if(CUD.role !== 'admin') { msg('⛔ فقط الأدمن'); return; }
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev) {
+    try {
+      const backup = JSON.parse(ev.target.result);
+      if(!backup.drugs || !Array.isArray(backup.drugs)) { msg('❌ ملف غير صحيح'); return; }
+      let added = 0;
+      for(const d of backup.drugs) {
+        const cleanData = {};
+        ['nameAr','name','type','qty','exp','category','note','addedBy'].forEach(k => {
+          if(d[k] !== undefined) cleanData[k] = d[k];
+        });
+        if(!cleanData.nameAr && !cleanData.name) continue;
+        await addDoc(collection(db,'drugs'), {...cleanData, restoredAt: serverTimestamp()});
+        added++;
+      }
+      msg('✅ تم استعادة ' + added + ' دواء');
+      renderInv();
+    } catch(err) { console.error(err); msg('❌ خطأ في الملف: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+};
+
+// ═══ FIX PERMISSIONS MODAL ═══
+window.openEP = async function(uid, name) {
+  document.getElementById('ep-uid').value = uid;
+  document.getElementById('ep-name').textContent = 'المستخدم: ' + name;
+  // Load fresh user data
+  const snap = await getDocs(query(collection(db,'users'), where('uid','==',uid)));
+  if(snap.empty) { msg('❌ لم يُعثر على المستخدم'); return; }
+  const p = snap.docs[0].data().permissions || {};
+  const ids=['vi','eq','ad','dd','ap','rp','ex','na'];
+  const keys=['viewInv','editQty','addDrug','delDrug','approve','reports','export','viewNarc'];
+  ids.forEach((id,i)=>{const el=document.getElementById('ep-'+id);if(el)el.checked=p[keys[i]]===true;});
+  document.getElementById('ep-modal').classList.add('show');
+};
+
 
 window.closeModal=function(id){document.getElementById(id).classList.remove('show');};
 document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)closeModal(this.id);}));
