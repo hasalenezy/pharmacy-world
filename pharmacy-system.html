@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام عهدة الأدوية</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+<script>
+// Apply theme immediately to prevent flash
+(function(){
+  const t = localStorage.getItem('theme');
+  if(t === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -517,10 +524,13 @@ function initApp(){
   document.getElementById('header-sub').textContent=`${CUD.name} — ${CUD.dept||''}`;
   const rb=document.getElementById('role-badge');rb.textContent=rl[CUD.role]||CUD.role;rb.className='role-badge '+(rc[CUD.role]||'');
   buildTabs();loadNotifs();
+  // Setup browser notifications for ALL roles
+  setupBrowserNotifications();
+  setupNotifListener();
+
   if(CUD.role==='warehouse'){
     document.getElementById('reminder-bar').classList.add('show');
     startReminder(5);
-    if('Notification'in window)Notification.requestPermission();
   }
 }
 function buildTabs(){
@@ -678,13 +688,47 @@ async function loadDash(){
   const ex=drugs.filter(d=>{const dy=daysLeft(d.exp||'');return dy>=0&&dy<=90;}).sort((a,b)=>daysLeft(a.exp||'')-daysLeft(b.exp||'')).slice(0,5);
   document.getElementById('dash-expiring').innerHTML=ex.length?ex.map(d=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)"><span style="font-weight:600">${d.nameAr||d.name}</span><span class="badge badge-warn">⚠ ${daysLeft(d.exp||'')} يوم</span></div>`).join(''):'<div class="empty-state"><div class="icon">✅</div><p>لا توجد أدوية تنتهي قريباً</p></div>';
 }
+// ── BROWSER NOTIFICATIONS SETUP ──
+async function setupBrowserNotifications() {
+  if(!('Notification' in window)) return;
+  if(Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+}
+
+function showBrowserNotif(title, body) {
+  if(Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '💊', badge: '💊', lang: 'ar' });
+  }
+}
+
+// Listen for new notifications in real-time and show browser notification
+function setupNotifListener() {
+  const q = query(
+    collection(db,'notifications'),
+    where('toUid','==',CU.uid),
+    where('read','==',false),
+    orderBy('createdAt','desc')
+  );
+  let isFirst = true;
+  onSnapshot(q, snap => {
+    if(isFirst) { isFirst = false; return; } // skip initial load
+    snap.docChanges().forEach(change => {
+      if(change.type === 'added') {
+        const data = change.doc.data();
+        showBrowserNotif('نظام عهدة الأدوية 💊', data.message);
+      }
+    });
+  });
+}
+
 window.submitRequest=async function(){
   const drug=document.getElementById('req-drug').value.trim();const qty=+document.getElementById('req-qty').value;
   const priority=document.getElementById('req-priority').value;const note=document.getElementById('req-note').value.trim();
   if(!drug){msg('⚠️ أدخل اسم الدواء');return;}if(!qty||qty<=0){msg('⚠️ أدخل الكمية');return;}
   await addDoc(collection(db,'requests'),{drug,qty,priority,note,status:'pending',fromUid:CU.uid,fromName:CUD.name,fromDept:CUD.dept||'',createdAt:serverTimestamp()});
   const ws=await getDocs(query(collection(db,'users'),where('role','in',['warehouse','admin'])));
-  for(const u of ws.docs)await notif(u.data().uid,`طلب جديد${priority==='urgent'?' 🚨':''}: ${drug} (${qty}) من ${CUD.dept||CUD.name}`);
+  for(const u of ws.docs)await notif(u.data().uid,`${priority==='urgent'?'🚨 عاجل: ':''}طلب جديد — ${drug} (${qty}) من ${CUD.dept||CUD.name}`);
   const cs=await getDocs(query(collection(db,'users'),where('role','==','custodian')));
   for(const u of cs.docs)if(u.data().permissions?.approve)await notif(u.data().uid,`طلب جديد: ${drug} (${qty}) من ${CUD.dept||CUD.name}`);
   ['req-drug','req-qty','req-note'].forEach(id=>document.getElementById(id).value='');
@@ -876,16 +920,23 @@ window.restoreData = async function(e) {
   reader.onload = async function(ev) {
     try {
       const backup = JSON.parse(ev.target.result);
-      if(!backup.drugs) { msg('❌ ملف غير صحيح'); return; }
+      if(!backup.drugs || !Array.isArray(backup.drugs)) { msg('❌ ملف غير صحيح'); return; }
       let added = 0;
       for(const d of backup.drugs) {
-        const {id, ...data} = d;
-        await addDoc(collection(db,'drugs'), {...data, restoredAt: serverTimestamp()});
+        // Remove Firestore specific fields that can't be restored directly
+        const cleanData = {};
+        ['nameAr','name','type','qty','exp','category','note','addedBy'].forEach(k => {
+          if(d[k] !== undefined) cleanData[k] = d[k];
+        });
+        await addDoc(collection(db,'drugs'), {...cleanData, restoredAt: serverTimestamp()});
         added++;
       }
-      msg(`✅ تم استعادة ${added} دواء`);
+      msg('✅ تم استعادة ' + added + ' دواء');
       renderInv();
-    } catch(err) { msg('❌ خطأ في قراءة الملف'); }
+    } catch(err) {
+      console.error(err);
+      msg('❌ خطأ: ' + err.message);
+    }
   };
   reader.readAsText(file);
   e.target.value = '';
@@ -1179,7 +1230,7 @@ async function handleBarcode(code) {
 
 
 // ── THEME ──
-function toggleTheme() {
+window.toggleTheme = function() {
   const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   if(isDark) {
     document.documentElement.removeAttribute('data-theme');
@@ -1190,12 +1241,13 @@ function toggleTheme() {
     document.getElementById('theme-toggle').textContent = '☀️';
     localStorage.setItem('theme', 'dark');
   }
-}
-// Apply saved theme on load
+};
+// Update button icon on init
 (function(){
   const saved = localStorage.getItem('theme');
   if(saved === 'dark') {
-    document.documentElement.setAttribute('data-theme', 'dark');
+    const btn = document.getElementById('theme-toggle');
+    if(btn) btn.textContent = '☀️';
   }
 })();
 
